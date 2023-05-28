@@ -20,7 +20,7 @@ def add(x, y):
         Sum of x + y
     """
     ### BEGIN YOUR CODE
-    pass
+    return x + y
     ### END YOUR CODE
 
 
@@ -48,7 +48,20 @@ def parse_mnist(image_filename, label_filename):
                 for MNIST will contain the values 0-9.
     """
     ### BEGIN YOUR CODE
-    pass
+    with gzip.open(image_filename, 'rb') as f:
+        image_data = np.frombuffer(f.read(), np.uint8, offset=16)
+    
+    # Read label file
+    with gzip.open(label_filename, 'rb') as f:
+        label_data = np.frombuffer(f.read(), np.uint8, offset=8)
+    
+    # Normalize image data
+    image_data = image_data.astype(np.float32) / 255.0
+
+    # Reshape image data to (num_examples x input_dim)
+    image_data = image_data.reshape(-1, 784)
+    return image_data, label_data
+
     ### END YOUR CODE
 
 
@@ -68,7 +81,21 @@ def softmax_loss(Z, y):
         Average softmax loss over the sample.
     """
     ### BEGIN YOUR CODE
-    pass
+    batch_size = Z.shape[0]
+
+    # Compute the softmax probabilities
+    exp_Z = np.exp(Z)
+    softmax_probs = exp_Z / np.sum(exp_Z, axis=1, keepdims=True)
+
+    # Get the probabilities of the correct class for each example
+    correct_class_probs = softmax_probs[np.arange(batch_size), y]
+
+    # Compute the negative log probabilities
+    neg_log_probs = -np.log(correct_class_probs)
+
+    # Compute the average loss over the batch
+    avg_loss = np.mean(neg_log_probs)
+    return avg_loss
     ### END YOUR CODE
 
 
@@ -91,7 +118,29 @@ def softmax_regression_epoch(X, y, theta, lr = 0.1, batch=100):
         None
     """
     ### BEGIN YOUR CODE
-    pass
+    num_examples = X.shape[0]
+
+    for i in range(0, num_examples, batch):
+        # Get the current batch
+        X_batch = X[i:i + batch]
+        y_batch = y[i:i + batch]
+
+        # Compute the logits for the batch
+        logits = np.dot(X_batch, theta)
+
+        # Compute the softmax probabilities
+        exp_logits = np.exp(logits)
+        softmax_probs = exp_logits / np.sum(exp_logits, axis=1, keepdims=True)
+
+        # Compute the gradient of the loss with respect to logits
+        grad_logits = softmax_probs
+        grad_logits[np.arange(len(y_batch)), y_batch] -= 1
+
+        # Compute the gradient of the loss with respect to theta
+        grad_theta = np.dot(X_batch.T, grad_logits)
+
+        # Update theta using gradient descent
+        theta -= lr * (grad_theta / batch)  # Divide by batch size
     ### END YOUR CODE
 
 
@@ -118,7 +167,42 @@ def nn_epoch(X, y, W1, W2, lr = 0.1, batch=100):
         None
     """
     ### BEGIN YOUR CODE
-    pass
+    num_examples = X.shape[0]
+    hidden_dim = W1.shape[1]
+    num_classes = W2.shape[1]
+
+    # Iterate through batches
+    for i in range(0, num_examples, batch):
+        # Get the current batch
+        X_batch = X[i:i + batch]
+        y_batch = y[i:i + batch]
+
+        # Compute the hidden layer activations using ReLU
+        hidden_activations = np.maximum(0, np.dot(X_batch, W1))
+
+        # Compute the logits for the batch
+        logits = np.dot(hidden_activations, W2)
+
+        # Compute the softmax probabilities
+        exp_logits = np.exp(logits)
+        softmax_probs = exp_logits / np.sum(exp_logits, axis=1, keepdims=True)
+
+        # Compute the gradient of the loss with respect to logits
+        grad_logits = softmax_probs
+        grad_logits[np.arange(len(y_batch)), y_batch] -= 1
+
+        # Compute the gradient of the loss with respect to W2
+        grad_W2 = np.dot(hidden_activations.T, grad_logits)
+
+        # Compute the gradient of the loss with respect to hidden layer activations
+        grad_hidden = np.dot(grad_logits, W2.T)
+
+        # Compute the gradient of the loss with respect to W1
+        grad_W1 = np.dot(X_batch.T, grad_hidden * (hidden_activations > 0))
+
+        # Update W1 and W2 using gradient descent
+        W1 -= lr * (grad_W1 / batch)
+        W2 -= lr * (grad_W2 / batch)
     ### END YOUR CODE
 
 

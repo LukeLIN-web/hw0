@@ -33,7 +33,89 @@ void softmax_regression_epoch_cpp(const float *X, const unsigned char *y,
      */
 
     /// BEGIN YOUR CODE
+ // Iterate through batches
+    for (size_t i = 0; i < m; i += batch)
+    {
+        // Get the current batch
+        size_t batch_size = std::min(batch, m - i);
+        const float *X_batch = X + i * n;
+        const unsigned char *y_batch = y + i;
 
+        // Compute the logits for the batch
+        float *logits = new float[batch_size * k];
+        for (size_t j = 0; j < batch_size; j++)
+        {
+            for (size_t c = 0; c < k; c++)
+            {
+                float dot_product = 0.0;
+                for (size_t d = 0; d < n; d++)
+                {
+                    dot_product += X_batch[j * n + d] * theta[d * k + c];
+                }
+                logits[j * k + c] = dot_product;
+            }
+        }
+
+        // Compute the softmax probabilities
+        float *softmax_probs = new float[batch_size * k];
+        for (size_t j = 0; j < batch_size; j++)
+        {
+            float max_logit = logits[j * k];
+            for (size_t c = 1; c < k; c++)
+            {
+                max_logit = std::max(max_logit, logits[j * k + c]);
+            }
+
+            float sum_exp_logit = 0.0;
+            for (size_t c = 0; c < k; c++)
+            {
+                softmax_probs[j * k + c] = std::exp(logits[j * k + c] - max_logit);
+                sum_exp_logit += softmax_probs[j * k + c];
+            }
+
+            for (size_t c = 0; c < k; c++)
+            {
+                softmax_probs[j * k + c] /= sum_exp_logit;
+            }
+        }
+
+        // Compute the gradient of the loss with respect to logits
+        float *grad_logits = new float[batch_size * k];
+        for (size_t j = 0; j < batch_size; j++)
+        {
+            for (size_t c = 0; c < k; c++)
+            {
+                grad_logits[j * k + c] = softmax_probs[j * k + c];
+                if (c == y_batch[j])
+                {
+                    grad_logits[j * k + c] -= 1.0;
+                }
+            }
+        }
+
+        // Compute the gradient of the loss with respect to theta
+        float *grad_theta = new float[n * k];
+        for (size_t d = 0; d < n; d++)
+        {
+            for (size_t c = 0; c < k; c++)
+            {
+                float dot_product = 0.0;
+                for (size_t j = 0; j < batch_size; j++)
+                {
+                    dot_product += X_batch[j * n + d] * grad_logits[j * k + c];
+                }
+                grad_theta[d * k + c] = dot_product / batch_size;
+            }
+        }
+              // Update theta using gradient descent
+        for (size_t d = 0; d < n; d++)
+        {
+            for (size_t c = 0; c < k; c++)
+            {
+            theta[d * k + c] -= lr * grad_theta[d * k + c];
+            }
+        }
+    }
     /// END YOUR CODE
 }
 
